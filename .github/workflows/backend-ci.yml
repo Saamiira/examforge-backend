@@ -1,0 +1,48 @@
+name: Backend CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: examforge
+          POSTGRES_USER: examforge
+          POSTGRES_PASSWORD: examforge
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U examforge -d examforge"
+          --health-interval 5s
+          --health-retries 10
+
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: examforge
+      DB_USER: examforge
+      DB_PASSWORD: examforge
+      JWT_SECRET: ci-only-secret-not-used-in-production-0123456789abcdef0123456789abcdef
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Enable pgvector extension
+        run: PGPASSWORD=examforge psql -h localhost -U examforge -d examforge -c "CREATE EXTENSION IF NOT EXISTS vector;"
+
+      - name: Build and test
+        run: ./mvnw -B verify
