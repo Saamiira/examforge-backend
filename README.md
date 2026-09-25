@@ -110,23 +110,25 @@ erDiagram
 
 El modelo comprende **15 entidades**:
 
-1. **University** (`universities`): id, name, acronym. `@OneToMany` hacia Career.
-2. **Career** (`careers`): id, name, code. `@ManyToOne` hacia University; `@OneToMany` hacia CareerCourse.
-3. **Course** (`courses`): id, name, code, description. `@OneToMany` hacia CareerCourse, UserCourse, Document y Assessment.
-4. **CareerCourse** (`career_courses`): enlace entre carreras y cursos, con restricción única (career, course). `@ManyToOne` hacia Career y Course.
-5. **User** (`users`): id, fullName, email (único), password, role, createdAt. `@OneToMany` hacia UserCourse, Attempt y RefreshToken.
+1. **University** (`universities`): id, name (único), acronym.
+2. **Career** (`careers`): id, name, code. `@ManyToOne` hacia University.
+3. **Course** (`courses`): id, code (único), name, description.
+4. **CareerCourse** (`career_courses`): enlace carrera–curso con restricción única (career, course). `@ManyToOne` hacia Career y Course.
+5. **User** (`users`): id, fullName, email (único), password (BCrypt), role (`STUDENT`, `TEACHER`, `ADMIN`).
 6. **RefreshToken** (`refresh_tokens`): id, token (único), expiryDate, revoked. `@ManyToOne` hacia User.
-7. **UserCourse** (`user_courses`): id, roleInCourse, enrolledAt, con restricción única (user, course). `@ManyToOne` hacia User y Course.
-8. **Document** (`documents`): id, title, fileUrl, fileSize, status (`PENDING`, `PROCESSING`, `READY`, `FAILED`). `@ManyToOne` hacia Course y User; `@OneToMany` hacia DocumentChunk.
-9. **DocumentChunk** (`document_chunks`): id, content, pageNumber, chunkOrder, embedding (tipo `vector`). `@ManyToOne` hacia Document.
-10. **QuestionSource** (`question_sources`): id, relevanceScore, excerptCited. Registra qué fragmento sustenta cada pregunta. `@ManyToOne` hacia Question y DocumentChunk.
-11. **Assessment** (`assessments`): id, title, description, difficulty, visibility, status (`DRAFT`, `GENERATING`, `READY`, `PUBLISHED`, `FAILED`). `@ManyToOne` hacia Course y User; `@OneToMany` hacia Question.
-12. **Question** (`questions`): id, text, type (`MULTIPLE_CHOICE`, `TRUE_FALSE`), topic, explanation. `@ManyToOne` hacia Assessment; `@OneToMany` hacia Option y QuestionSource.
-13. **Option** (`options`): id, text, isCorrect. `@ManyToOne` hacia Question.
-14. **Attempt** (`attempts`): id, score, startedAt, completedAt, feedback. `@ManyToOne` hacia Assessment y User; `@OneToMany` hacia Answer.
-15. **Answer** (`answers`): id, isCorrect. `@ManyToOne` hacia Attempt, Question y Option (opción marcada).
+7. **UserCourse** (`user_courses`): matrícula con restricción única (user, course). `@ManyToOne` hacia User y Course.
+8. **Document** (`documents`): id, title, fileUrl, fileSize, status (`PENDING`, `PROCESSING`, `READY`, `FAILED`), errorMessage. `@ManyToOne` hacia Course y User.
+9. **DocumentChunk** (`document_chunks`): id, content, pageNumber, chunkIndex, embedding (`vector(3072)`). `@ManyToOne` hacia Document.
+10. **Assessment** (`assessments`): id, title, description, difficulty, status (`DRAFT`, `GENERATING`, `READY`, `PUBLISHED`, `FAILED`), visibility (`PRIVATE`, `COURSE`, `PUBLIC`), failureReason. `@ManyToOne` hacia Course y User (autor); `@OneToMany` hacia Question.
+11. **Question** (`questions`): id, text, type (`MULTIPLE_CHOICE`, `TRUE_FALSE`), difficulty, topic, explanation, position. `@ManyToOne` hacia Assessment; `@OneToMany` hacia Option y QuestionSource.
+12. **Option** (`options`): id, text, isCorrect, position. `@ManyToOne` hacia Question.
+13. **QuestionSource** (`question_sources`): id, relevanceScore (similitud coseno). Registra qué fragmento sustenta cada pregunta; restricción única (question, chunk). `@ManyToOne` hacia Question y DocumentChunk.
+14. **Attempt** (`attempts`): id, status (`IN_PROGRESS`, `SUBMITTED`), startedAt, submittedAt, score (0–20), correctCount, totalQuestions. `@ManyToOne` hacia User (estudiante) y Assessment; `@OneToMany` hacia Answer.
+15. **Answer** (`answers`): id, isCorrect, restricción única (attempt, question). `@ManyToOne` hacia Attempt, Question y Option (opción marcada, opcional).
 
-**Optimización:** las relaciones `@ManyToOne` usan `FetchType.LAZY`; `cascade = ALL` con `orphanRemoval` solo en composición (Assessment → Question → Option, Attempt → Answer, Document → DocumentChunk). Los intentos no se borran en cascada, para conservar el historial.
+Todas heredan de `BaseEntity` (id, createdAt, updatedAt con auditoría JPA).
+
+**Optimización:** las relaciones `@ManyToOne` usan `FetchType.LAZY` y la mayoría son unidireccionales; solo hay `@OneToMany` donde existe composición real (Assessment → Question → Option/QuestionSource, Attempt → Answer), con `cascade = ALL` y `orphanRemoval`. Las colecciones usan `@BatchSize` y las consultas críticas `@EntityGraph` para evitar N+1. Los intentos no se borran en cascada, para conservar el historial.
 
 ## Manejo de Errores
 
