@@ -9,6 +9,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/v1/courses/{courseId}/documents")
 @RequiredArgsConstructor
@@ -25,5 +27,15 @@ public class DocumentController {
             
         DocumentResponse response = documentService.uploadDocument(courseId, title, file);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
+
+    @GetMapping
+    public List<DocumentResponse> findByCourse(@PathVariable Long courseId) {
+        return documentService.findByCourse(courseId);
+    }
+
+    @GetMapping("/{documentId}")
+    public DocumentResponse findById(@PathVariable Long courseId, @PathVariable Long documentId) {
+        return documentService.findById(courseId, documentId);
     }
 }

@@ -3,6 +3,8 @@ package com.examforge.api.document.service;
 import com.examforge.api.academic.entity.Course;
 import com.examforge.api.academic.repository.CourseRepository;
 import com.examforge.api.common.exception.ResourceNotFoundException;
+import com.examforge.api.common.exception.BadRequestException;
+import com.examforge.api.common.exception.FileStorageException;
 import com.examforge.api.document.dto.DocumentResponse;
 import com.examforge.api.document.entity.Document;
 import com.examforge.api.document.entity.DocumentStatus;
@@ -22,6 +24,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -39,6 +42,17 @@ public class DocumentService {
 
     @Transactional
     public DocumentResponse uploadDocument(Long courseId, String title, MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BadRequestException("File is required");
+        }
+        String originalName = file.getOriginalFilename() == null ? "" : file.getOriginalFilename().toLowerCase();
+        if (!"application/pdf".equals(file.getContentType()) && !originalName.endsWith(".pdf")) {
+            throw new BadRequestException("Only PDF files are allowed");
+        }
+        if (title == null || title.isBlank() || title.length() > 255) {
+            throw new BadRequestException("Title is required (max 255 characters)");
+        }
+
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Course not found"));
         User currentUser = currentUserProvider.getCurrentUser();
@@ -49,7 +63,7 @@ public class DocumentService {
                 Files.createDirectories(uploadPath);
             }
 
-            String filename = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
+            String filename = UUID.randomUUID() + ".pdf";
             Path filePath = uploadPath.resolve(filename);
             Files.copy(file.getInputStream(), filePath);
 
@@ -67,7 +81,25 @@ public class DocumentService {
 
             return documentMapper.toResponse(savedDocument);
         } catch (IOException e) {
-            throw new RuntimeException("Could not store file", e);
+            throw new FileStorageException("Could not store file");
         }
+    }
+
+    @Transactional(readOnly = true)
+    public List<DocumentResponse> findByCourse(Long courseId) {
+        if (!courseRepository.existsById(courseId)) {
+            throw new ResourceNotFoundException("Course not found");
+        }
+        return documentRepository.findByCourseIdOrderByCreatedAtDesc(courseId).stream()
+                .map(documentMapper::toResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public DocumentResponse findById(Long courseId, Long documentId) {
+        Document document = documentRepository.findById(documentId)
+                .filter(d -> d.getCourse().getId().equals(courseId))
+                .orElseThrow(() -> new ResourceNotFoundException("Document not found"));
+        return documentMapper.toResponse(document);
     }
 }
