@@ -13,6 +13,6 @@ public interface AttemptRepository extends JpaRepository<Attempt, Long> {
     @EntityGraph(attributePaths = "assessment")
     Page<Attempt> findByStudentIdOrderByCreatedAtDesc(Long studentId, Pageable pageable);
 
-    @EntityGraph(attributePaths = {"assessment", "student"})
+    @EntityGraph(attributePaths = {"assessment", "student", "answers"})
     Optional<Attempt> findWithAssessmentById(Long id);
 }
