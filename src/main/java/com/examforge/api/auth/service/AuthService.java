@@ -13,6 +13,7 @@ import com.examforge.api.auth.repository.RefreshTokenRepository;
 import com.examforge.api.common.exception.DuplicateResourceException;
 import com.examforge.api.common.exception.InvalidTokenException;
 import com.examforge.api.common.exception.UnauthorizedException;
+import com.examforge.api.notification.event.UserRegisteredEvent;
 import com.examforge.api.security.JwtService;
 import com.examforge.api.user.dto.UserResponse;
 import com.examforge.api.user.entity.Role;
@@ -20,6 +21,7 @@ import com.examforge.api.user.entity.User;
 import com.examforge.api.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
@@ -39,6 +41,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Value("${app.jwt.refresh-expiration-ms}")
     private long refreshExpirationMs;
@@ -52,6 +55,7 @@ public class AuthService {
 
         User user = userRepository.save(new User(request.fullName().trim(), email,
                 passwordEncoder.encode(request.password()), Role.STUDENT));
+        eventPublisher.publishEvent(new UserRegisteredEvent(user.getId(), user.getEmail(), user.getFullName()));
         return issueTokens(user);
     }
 
