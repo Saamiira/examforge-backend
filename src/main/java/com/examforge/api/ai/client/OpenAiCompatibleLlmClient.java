@@ -10,6 +10,8 @@ import com.examforge.api.common.exception.AiGenerationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
@@ -19,6 +21,8 @@ import org.springframework.web.client.RestClientException;
 public class OpenAiCompatibleLlmClient implements LlmClient {
 
     private static final double TEMPERATURE = 0.3;
+    private static final int MAX_ATTEMPTS = 3;
+    private static final long BACKOFF_MILLIS = 2000;
 
     private final RestClient aiRestClient;
     private final AiProperties properties;
@@ -29,17 +33,29 @@ public class OpenAiCompatibleLlmClient implements LlmClient {
                 properties.chatModel(),
                 List.of(ChatMessage.system(systemPrompt), ChatMessage.user(userPrompt)),
                 TEMPERATURE);
-        try {
-            ChatResponse response = aiRestClient.post()
-                    .uri("/chat/completions")
-                    .body(request)
-                    .retrieve()
-                    .body(ChatResponse.class);
-            return stripCodeFences(extractContent(response));
-        } catch (RestClientException ex) {
-            log.warn("Chat completion request failed: {}", ex.getMessage());
-            throw new AiGenerationException("Language model request failed");
+        for (int attempt = 1; ; attempt++) {
+            try {
+                return stripCodeFences(extractContent(callProvider(request)));
+            } catch (HttpServerErrorException | HttpClientErrorException.TooManyRequests ex) {
+                if (attempt >= MAX_ATTEMPTS) {
+                    log.warn("Chat completion unavailable after {} attempts: {}", attempt, ex.getStatusCode());
+                    throw new AiGenerationException("Language model is temporarily unavailable");
+                }
+                log.info("Retrying chat completion ({}/{}) after {}", attempt, MAX_ATTEMPTS, ex.getStatusCode());
+                pause(BACKOFF_MILLIS * attempt);
+            } catch (RestClientException ex) {
+                log.warn("Chat completion request failed: {}", ex.getMessage());
+                throw new AiGenerationException("Language model request failed");
+            }
         }
+    }
+
+    private ChatResponse callProvider(ChatRequest request) {
+        return aiRestClient.post()
+                .uri("/chat/completions")
+                .body(request)
+                .retrieve()
+                .body(ChatResponse.class);
     }
 
     private String extractContent(ChatResponse response) {
@@ -58,5 +74,14 @@ public class OpenAiCompatibleLlmClient implements LlmClient {
             return trimmed;
         }
         return trimmed.replaceFirst("^```(?:json)?\\s*", "").replaceFirst("\\s*```$", "").strip();
+    }
+
+    private void pause(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new AiGenerationException("Language model request was interrupted");
+        }
     }
 }
