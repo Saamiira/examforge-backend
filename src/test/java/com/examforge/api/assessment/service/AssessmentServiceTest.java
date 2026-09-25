@@ -13,6 +13,7 @@ import java.util.Set;
 
 import com.examforge.api.academic.entity.Course;
 import com.examforge.api.academic.repository.CourseRepository;
+import com.examforge.api.academic.repository.UserCourseRepository;
 import com.examforge.api.assessment.dto.AssessmentGenerateRequest;
 import com.examforge.api.assessment.dto.AssessmentSummaryResponse;
 import com.examforge.api.assessment.dto.OptionRequest;
@@ -63,6 +64,8 @@ class AssessmentServiceTest {
     private CurrentUserProvider currentUserProvider;
     @Mock
     private ApplicationEventPublisher eventPublisher;
+    @Mock
+    private UserCourseRepository userCourseRepository;
 
     private AssessmentService service;
     private User author;
@@ -75,7 +78,7 @@ class AssessmentServiceTest {
         QuestionMapper questionMapper = new QuestionMapperImpl();
         service = new AssessmentService(assessmentRepository, questionSourceRepository, courseRepository,
                 documentRepository, attemptRepository, currentUserProvider,
-                new AssessmentMapper(questionMapper), questionMapper, eventPublisher);
+                new AssessmentMapper(questionMapper), questionMapper, eventPublisher, userCourseRepository);
 
         author = withId(new User("Teacher", "teacher@examforge.dev", "x", Role.TEACHER), 1L);
         otherStudent = withId(new User("Student", "student@examforge.dev", "x", Role.STUDENT), 2L);
@@ -127,6 +130,20 @@ class AssessmentServiceTest {
         assertThat(response.status()).isEqualTo(AssessmentStatus.GENERATING);
         assertThat(response.courseId()).isEqualTo(3L);
         verify(eventPublisher).publishEvent(any(AssessmentGenerationRequestedEvent.class));
+    }
+
+    @Test
+    void studentsMustBeEnrolledToGenerate() {
+        when(currentUserProvider.getCurrentUser()).thenReturn(otherStudent);
+        when(courseRepository.findById(3L)).thenReturn(Optional.of(course));
+        when(userCourseRepository.existsByUserIdAndCourseId(2L, 3L)).thenReturn(false, true);
+        when(documentRepository.findAllById(List.of(7L)))
+                .thenReturn(List.of(document(7L, course, DocumentStatus.READY)));
+        when(assessmentRepository.save(any(Assessment.class))).thenAnswer(inv -> withId(inv.getArgument(0), 10L));
+
+        assertThatThrownBy(() -> service.requestGeneration(generateRequest()))
+                .isInstanceOf(ForbiddenException.class);
+        assertThat(service.requestGeneration(generateRequest()).status()).isEqualTo(AssessmentStatus.GENERATING);
     }
 
     @Test

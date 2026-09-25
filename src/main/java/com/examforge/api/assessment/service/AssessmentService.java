@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.examforge.api.academic.entity.Course;
 import com.examforge.api.academic.repository.CourseRepository;
+import com.examforge.api.academic.repository.UserCourseRepository;
 import com.examforge.api.assessment.dto.AssessmentDetailResponse;
 import com.examforge.api.assessment.dto.AssessmentGenerateRequest;
 import com.examforge.api.assessment.dto.AssessmentSummaryResponse;
@@ -56,12 +57,17 @@ public class AssessmentService {
     private final AssessmentMapper assessmentMapper;
     private final QuestionMapper questionMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final UserCourseRepository userCourseRepository;
 
     @Transactional
     public AssessmentSummaryResponse requestGeneration(AssessmentGenerateRequest request) {
         User author = currentUserProvider.getCurrentUser();
         Course course = courseRepository.findById(request.courseId())
                 .orElseThrow(() -> new ResourceNotFoundException("Course", request.courseId()));
+        if (author.getRole() == Role.STUDENT
+                && !userCourseRepository.existsByUserIdAndCourseId(author.getId(), course.getId())) {
+            throw new ForbiddenException("Enroll in the course to generate assessments from its documents");
+        }
         List<Long> documentIds = request.documentIds().stream().distinct().toList();
         validateDocuments(documentIds, course.getId());
 
