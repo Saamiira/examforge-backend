@@ -7,6 +7,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.examforge.api.academic.repository.UserCourseRepository;
 import com.examforge.api.assessment.entity.Assessment;
 import com.examforge.api.assessment.entity.AssessmentStatus;
 import com.examforge.api.assessment.entity.Option;
@@ -49,6 +50,7 @@ public class AttemptService {
     private final GradingCalculator gradingCalculator;
     private final AttemptMapper attemptMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final UserCourseRepository userCourseRepository;
 
     @Transactional
     public AttemptStartResponse start(Long assessmentId) {
@@ -123,6 +125,10 @@ public class AttemptService {
         }
         if (assessment.getVisibility() == Visibility.PRIVATE && !isAuthor) {
             throw new ForbiddenException("This assessment is private");
+        }
+        if (assessment.getVisibility() == Visibility.COURSE && !isAuthor
+                && !userCourseRepository.existsByUserIdAndCourseId(userId, assessment.getCourse().getId())) {
+            throw new ForbiddenException("Enroll in the course to take this assessment");
         }
         if (assessment.getQuestions().isEmpty()) {
             throw new BadRequestException("Assessment " + assessment.getId() + " has no questions");

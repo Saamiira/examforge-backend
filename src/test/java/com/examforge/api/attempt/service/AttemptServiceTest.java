@@ -11,6 +11,8 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
+import com.examforge.api.academic.entity.Course;
+import com.examforge.api.academic.repository.UserCourseRepository;
 import com.examforge.api.assessment.entity.Assessment;
 import com.examforge.api.assessment.entity.AssessmentStatus;
 import com.examforge.api.assessment.entity.Option;
@@ -52,6 +54,8 @@ class AttemptServiceTest {
     private CurrentUserProvider currentUserProvider;
     @Mock
     private ApplicationEventPublisher eventPublisher;
+    @Mock
+    private UserCourseRepository userCourseRepository;
 
     private AttemptService service;
     private User student;
@@ -60,7 +64,7 @@ class AttemptServiceTest {
     @BeforeEach
     void setUp() {
         service = new AttemptService(attemptRepository, assessmentRepository, currentUserProvider,
-                new GradingCalculator(), new AttemptMapper(), eventPublisher);
+                new GradingCalculator(), new AttemptMapper(), eventPublisher, userCourseRepository);
 
         User author = withId(new User("Teacher", "teacher@examforge.dev", "x", Role.TEACHER), 1L);
         student = withId(new User("Student", "student@examforge.dev", "x", Role.STUDENT), 2L);
@@ -151,6 +155,19 @@ class AttemptServiceTest {
 
         assessment.setVisibility(Visibility.PRIVATE);
         assertThatThrownBy(() -> service.start(10L)).isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
+    void courseAssessmentsRequireEnrollment() {
+        assessment.setCourse(withId(new Course(), 5L));
+        assessment.setVisibility(Visibility.COURSE);
+        when(currentUserProvider.getCurrentUser()).thenReturn(student);
+        when(assessmentRepository.findWithQuestionsById(10L)).thenReturn(Optional.of(assessment));
+        when(userCourseRepository.existsByUserIdAndCourseId(2L, 5L)).thenReturn(false, true);
+        when(attemptRepository.save(any(Attempt.class))).thenAnswer(inv -> withId(inv.getArgument(0), 50L));
+
+        assertThatThrownBy(() -> service.start(10L)).isInstanceOf(ForbiddenException.class);
+        assertThat(service.start(10L).questions()).hasSize(2);
     }
 
     private Attempt inProgressAttempt() {
