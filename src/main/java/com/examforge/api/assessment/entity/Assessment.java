@@ -3,6 +3,7 @@ package com.examforge.api.assessment.entity;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.examforge.api.academic.entity.Course;
 import com.examforge.api.common.entity.BaseEntity;
 import com.examforge.api.user.entity.User;
 import jakarta.persistence.CascadeType;
@@ -20,17 +21,25 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "assessments", indexes = @Index(name = "idx_assessments_author", columnList = "author_id"))
+@Table(name = "assessments", indexes = {
+        @Index(name = "idx_assessments_author", columnList = "author_id"),
+        @Index(name = "idx_assessments_course", columnList = "course_id")
+})
 public class Assessment extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "author_id", nullable = false)
     private User author;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "course_id", nullable = false)
+    private Course course;
 
     @Column(nullable = false, length = 150)
     private String title;
@@ -53,6 +62,7 @@ public class Assessment extends BaseEntity {
     @Column(length = 500)
     private String failureReason;
 
+    @BatchSize(size = 50)
     @OneToMany(mappedBy = "assessment", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("position ASC")
     private List<Question> questions = new ArrayList<>();

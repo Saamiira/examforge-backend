@@ -57,10 +57,19 @@ public class Question extends BaseEntity {
     @OrderBy("position ASC")
     private List<Option> options = new ArrayList<>();
 
+    @BatchSize(size = 50)
+    @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<QuestionSource> sources = new ArrayList<>();
+
     public void addOption(Option option) {
         option.setQuestion(this);
         option.setPosition(options.size() + 1);
         options.add(option);
+    }
+
+    public void addSource(QuestionSource source) {
+        source.setQuestion(this);
+        sources.add(source);
     }
 
     public void replaceOptions(List<Option> newOptions) {

@@ -25,6 +25,7 @@ public interface QuestionMapper {
     @Mapping(target = "assessment", ignore = true)
     @Mapping(target = "position", ignore = true)
     @Mapping(target = "options", ignore = true)
+    @Mapping(target = "sources", ignore = true)
     Question toEntity(QuestionRequest request);
 
     @Mapping(target = "question", ignore = true)
@@ -36,6 +37,7 @@ public interface QuestionMapper {
     @Mapping(target = "assessment", ignore = true)
     @Mapping(target = "position", ignore = true)
     @Mapping(target = "options", ignore = true)
+    @Mapping(target = "sources", ignore = true)
     Question fromGenerated(GeneratedQuestion generated);
 
     @Mapping(target = "question", ignore = true)
