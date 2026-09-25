@@ -134,13 +134,14 @@ Todas heredan de `BaseEntity` (id, createdAt, updatedAt con auditoría JPA).
 
 ### Estrategia de Excepciones Globales
 
-Un `@RestControllerAdvice` centraliza el manejo de errores y responde siempre con `ErrorResponseDTO`:
+Un `@RestControllerAdvice` centraliza el manejo de errores y responde siempre con `ErrorResponse`:
 
 - `timestamp`: fecha y hora en formato ISO-8601.
 - `status`: código HTTP.
 - `error`: nombre estándar del estado HTTP.
 - `message`: motivo del fallo.
 - `path`: URI invocada.
+- `fieldErrors`: errores de validación por campo (solo en respuestas 400).
 
 Manejarlas globalmente evita exponer trazas internas y garantiza un formato y código HTTP uniformes.
 
@@ -177,9 +178,9 @@ También se manejan excepciones de Spring: `MethodArgumentNotValidException` (40
 
 Tres roles almacenados en base de datos e incluidos en el JWT:
 
-- **STUDENT:** sube su material, genera, edita y resuelve sus propias evaluaciones.
-- **TEACHER:** además publica evaluaciones oficiales dentro de sus cursos.
-- **ADMIN:** gestiona universidades, carreras, cursos y usuarios.
+- **STUDENT:** se matricula en cursos, genera evaluaciones de práctica con los documentos existentes y las rinde.
+- **TEACHER:** además sube documentos PDF a los cursos, genera evaluaciones, edita sus preguntas y publica.
+- **ADMIN:** además gestiona universidades, carreras, cursos y los roles de los usuarios.
 
 Se aplica con `@EnableMethodSecurity` y `@PreAuthorize`. Además, los servicios verifican que el usuario autenticado sea dueño del recurso antes de editarlo o eliminarlo.
 
@@ -201,7 +202,7 @@ Las operaciones lentas se ejecutan fuera del hilo de la petición mediante event
 | `AssessmentGenerationRequestedEvent` | Recupera fragmentos relevantes y genera las preguntas con el LLM | La generación depende de un servicio externo lento |
 | `AssessmentGeneratedEvent` | Notifica por correo que la evaluación está lista | El envío SMTP no debe bloquear la generación |
 | `UserRegisteredEvent` | Envía el correo de bienvenida | El registro responde sin esperar al servidor de correo |
-| `AttemptCompletedEvent` | Envía el reporte de resultados con desempeño por tema | La calificación se entrega de inmediato; el correo se envía después |
+| `AttemptCompletedEvent` | Envía el correo con la nota obtenida | La calificación se entrega de inmediato; el correo se envía después |
 
 Los endpoints de subida y generación responden `202 Accepted`; el cliente consulta el `status` del recurso. Los correos usan plantillas Thymeleaf.
 
