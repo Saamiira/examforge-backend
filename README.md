@@ -10,7 +10,7 @@
   - Samira Rincon — Código: 202220436
   - Valeria Briceño — Código: 202310513
 - **Enlace de Despliegue en Producción:** [AQUÍ VA LA URL DE AWS] *(Nota: Desplegado usando AWS Academy Learner Lab)*
-- **Colección Postman:** [`postman_collection.json`](./postman_collection.json) en la raíz del repositorio
+- **Colección Postman:** [`ExamForge.postman_collection.json`](./postman/ExamForge.postman_collection.json)
 
 ## Índice
 
@@ -70,7 +70,7 @@ Anclar la generación al material del curso hace la práctica fiel a la bibliogr
 | Lenguaje | Java 21 LTS |
 | Framework | Spring Boot 3.3.5 (Web, Data JPA, Security, Mail, Validation) |
 | Base de datos | PostgreSQL 16 + pgvector |
-| IA y embeddings | API de LLM (OpenAI / Gemini) y modelos de embeddings |
+| IA y embeddings | Gemini (chat + gemini-embedding-001) vía endpoint compatible con OpenAI |
 | Seguridad | Spring Security 6, JJWT, BCrypt |
 | Documentos | Apache PDFBox |
 | Mapeo | MapStruct y Lombok |
@@ -247,11 +247,12 @@ docker compose up -d          # PostgreSQL 16 + pgvector
 | Módulo | Rutas |
 |---|---|
 | Auth | `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout` |
-| Académico | `GET /universities`, `GET /careers`, `GET /courses`, `POST /courses`, `GET /courses/{id}/enrollments`, `POST /courses/{id}/enrollments` |
-| Documentos | `POST /courses/{courseId}/documents`, `GET /courses/{courseId}/documents/{id}` |
+| Usuarios | `GET /users/me`, `GET /users`, `PATCH /users/{id}/role` |
+| Académico | CRUD completo de `universities`, `careers` y `courses` (escritura solo ADMIN), `POST /courses/{id}/enrollments` |
+| Documentos | `GET /courses/{courseId}/documents`, `POST /courses/{courseId}/documents`, `GET /courses/{courseId}/documents/{id}` |
 | Evaluaciones | `GET /assessments/me`, `GET /courses/{courseId}/assessments`, `POST /assessments/generate`, `GET /assessments/{id}`, `PUT /assessments/{id}`, `DELETE /assessments/{id}`, `POST /assessments/{id}/publish` |
 | Preguntas | `PUT /assessments/{id}/questions/{questionId}`, `DELETE /assessments/{id}/questions/{questionId}`, `GET /assessments/{id}/questions/{questionId}/sources` |
-| Intentos | `POST /assessments/{id}/attempts`, `POST /attempts/{id}/submit`, `GET /attempts/{id}` |
+| Intentos | `GET /attempts/me`, `POST /assessments/{id}/attempts`, `POST /attempts/{id}/submit`, `GET /attempts/{id}` |
 
 El detalle completo con ejemplos está en Swagger y en la colección Postman.
 
@@ -262,7 +263,8 @@ El detalle completo con ejemplos está en Swagger y en la colección Postman.
 3. **Subir PDF:** `POST /courses/{courseId}/documents` para cargar el material de estudio.
 4. **Esperar READY:** Consultar `GET /courses/{courseId}/documents/{id}` hasta que el estado del documento sea `READY`.
 5. **Generar Evaluación:** `POST /assessments/generate` seleccionando el PDF subido.
-6. **Publicar:** `POST /assessments/{id}/publish` para hacerla visible.
+   - 5b. **Hacerla visible:** `PUT /assessments/{id}` cambiando la visibilidad a `PUBLIC` (o `COURSE`, en cuyo caso el estudiante debe matricularse antes con `POST /courses/{courseId}/enrollments`).
+6. **Publicar:** `POST /assessments/{id}/publish` para confirmar la publicación.
 7. **Rendir y Calificar:** Un estudiante inicia (`POST /assessments/{id}/attempts`), envía sus respuestas (`POST /attempts/{id}/submit`) y obtiene su nota (`GET /attempts/{id}`).
 
 ## Conclusión
