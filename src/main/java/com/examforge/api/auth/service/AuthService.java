@@ -3,7 +3,6 @@ package com.examforge.api.auth.service;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Base64;
-import java.util.Locale;
 
 import com.examforge.api.auth.dto.AuthResponse;
 import com.examforge.api.auth.dto.LoginRequest;
@@ -32,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AuthService {
 
+    private static final String INVALID_CREDENTIALS = "Invalid email or password";
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final UserRepository userRepository;
@@ -45,7 +45,7 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        String email = normalize(request.email());
+        String email = request.email();
         if (userRepository.existsByEmail(email)) {
             throw new DuplicateResourceException("Email is already registered");
         }
@@ -57,15 +57,15 @@ public class AuthService {
 
     @Transactional
     public AuthResponse login(LoginRequest request) {
-        String email = normalize(request.email());
+        String email = request.email();
         try {
             authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email, request.password()));
         } catch (AuthenticationException ex) {
-            throw new UnauthorizedException("Invalid email or password");
+            throw new UnauthorizedException(INVALID_CREDENTIALS);
         }
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UnauthorizedException("Invalid email or password"));
+                .orElseThrow(() -> new UnauthorizedException(INVALID_CREDENTIALS));
         return issueTokens(user);
     }
 
@@ -99,9 +99,5 @@ public class AuthService {
         byte[] bytes = new byte[48];
         RANDOM.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
-
-    private static String normalize(String email) {
-        return email.trim().toLowerCase(Locale.ROOT);
     }
 }
