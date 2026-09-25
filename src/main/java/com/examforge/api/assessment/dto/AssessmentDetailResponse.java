@@ -13,6 +13,7 @@ public record AssessmentDetailResponse(
         String description,
         Difficulty difficulty,
         AssessmentStatus status,
+        String failureReason,
         Visibility visibility,
         Long courseId,
         Long authorId,
