@@ -9,8 +9,8 @@
   - Lucia Rodriguez — Código: 202310459
   - Samira Rincon — Código: 202220436
   - Valeria Briceño — Código: 202310513
-- **Enlace de Despliegue en Producción:** [En despliegue - Planificado Semana 7]
-- **Colección Postman:** [`postman_collection.json`](./postman_collection.json) en la raíz del repositorio
+- **Enlace de Despliegue en Producción:** [AQUÍ VA LA URL DE AWS] *(Nota: Desplegado usando AWS Academy Learner Lab)*
+- **Colección Postman:** [`ExamForge.postman_collection.json`](./postman/ExamForge.postman_collection.json)
 
 ## Índice
 
@@ -68,9 +68,9 @@ Anclar la generación al material del curso hace la práctica fiel a la bibliogr
 | Área | Tecnología |
 |---|---|
 | Lenguaje | Java 21 LTS |
-| Framework | Spring Boot 3.5.5 (Web, Data JPA, Security, Mail, Validation) |
+| Framework | Spring Boot 3.3.5 (Web, Data JPA, Security, Mail, Validation) |
 | Base de datos | PostgreSQL 16 + pgvector |
-| IA y embeddings | API de LLM (OpenAI / Gemini) y modelos de embeddings |
+| IA y embeddings | Gemini (chat + gemini-embedding-001) vía endpoint compatible con OpenAI |
 | Seguridad | Spring Security 6, JJWT, BCrypt |
 | Documentos | Apache PDFBox |
 | Mapeo | MapStruct y Lombok |
@@ -110,35 +110,38 @@ erDiagram
 
 El modelo comprende **15 entidades**:
 
-1. **University** (`universities`): id, name, acronym. `@OneToMany` hacia Career.
-2. **Career** (`careers`): id, name, code. `@ManyToOne` hacia University; `@OneToMany` hacia CareerCourse.
-3. **Course** (`courses`): id, name, code, description. `@OneToMany` hacia CareerCourse, UserCourse, Document y Assessment.
-4. **CareerCourse** (`career_courses`): enlace entre carreras y cursos, con restricción única (career, course). `@ManyToOne` hacia Career y Course.
-5. **User** (`users`): id, fullName, email (único), password, role, createdAt. `@OneToMany` hacia UserCourse, Attempt y RefreshToken.
+1. **University** (`universities`): id, name (único), acronym.
+2. **Career** (`careers`): id, name, code. `@ManyToOne` hacia University.
+3. **Course** (`courses`): id, code (único), name, description.
+4. **CareerCourse** (`career_courses`): enlace carrera–curso con restricción única (career, course). `@ManyToOne` hacia Career y Course.
+5. **User** (`users`): id, fullName, email (único), password (BCrypt), role (`STUDENT`, `TEACHER`, `ADMIN`).
 6. **RefreshToken** (`refresh_tokens`): id, token (único), expiryDate, revoked. `@ManyToOne` hacia User.
-7. **UserCourse** (`user_courses`): id, roleInCourse, enrolledAt, con restricción única (user, course). `@ManyToOne` hacia User y Course.
-8. **Document** (`documents`): id, title, fileUrl, fileSize, status (`PENDING`, `PROCESSING`, `READY`, `FAILED`). `@ManyToOne` hacia Course y User; `@OneToMany` hacia DocumentChunk.
-9. **DocumentChunk** (`document_chunks`): id, content, pageNumber, chunkOrder, embedding (tipo `vector`). `@ManyToOne` hacia Document.
-10. **QuestionSource** (`question_sources`): id, relevanceScore, excerptCited. Registra qué fragmento sustenta cada pregunta. `@ManyToOne` hacia Question y DocumentChunk.
-11. **Assessment** (`assessments`): id, title, description, difficulty, visibility, status (`DRAFT`, `GENERATING`, `READY`, `PUBLISHED`, `FAILED`). `@ManyToOne` hacia Course y User; `@OneToMany` hacia Question.
-12. **Question** (`questions`): id, text, type (`MULTIPLE_CHOICE`, `TRUE_FALSE`), topic, explanation. `@ManyToOne` hacia Assessment; `@OneToMany` hacia Option y QuestionSource.
-13. **Option** (`options`): id, text, isCorrect. `@ManyToOne` hacia Question.
-14. **Attempt** (`attempts`): id, score, startedAt, completedAt, feedback. `@ManyToOne` hacia Assessment y User; `@OneToMany` hacia Answer.
-15. **Answer** (`answers`): id, isCorrect. `@ManyToOne` hacia Attempt, Question y Option (opción marcada).
+7. **UserCourse** (`user_courses`): matrícula con restricción única (user, course). `@ManyToOne` hacia User y Course.
+8. **Document** (`documents`): id, title, fileUrl, fileSize, status (`PENDING`, `PROCESSING`, `READY`, `FAILED`), errorMessage. `@ManyToOne` hacia Course y User.
+9. **DocumentChunk** (`document_chunks`): id, content, pageNumber, chunkIndex, embedding (`vector(3072)`). `@ManyToOne` hacia Document.
+10. **Assessment** (`assessments`): id, title, description, difficulty, status (`DRAFT`, `GENERATING`, `READY`, `PUBLISHED`, `FAILED`), visibility (`PRIVATE`, `COURSE`, `PUBLIC`), failureReason. `@ManyToOne` hacia Course y User (autor); `@OneToMany` hacia Question.
+11. **Question** (`questions`): id, text, type (`MULTIPLE_CHOICE`, `TRUE_FALSE`), difficulty, topic, explanation, position. `@ManyToOne` hacia Assessment; `@OneToMany` hacia Option y QuestionSource.
+12. **Option** (`options`): id, text, isCorrect, position. `@ManyToOne` hacia Question.
+13. **QuestionSource** (`question_sources`): id, relevanceScore (similitud coseno). Registra qué fragmento sustenta cada pregunta; restricción única (question, chunk). `@ManyToOne` hacia Question y DocumentChunk.
+14. **Attempt** (`attempts`): id, status (`IN_PROGRESS`, `SUBMITTED`), startedAt, submittedAt, score (0–20), correctCount, totalQuestions. `@ManyToOne` hacia User (estudiante) y Assessment; `@OneToMany` hacia Answer.
+15. **Answer** (`answers`): id, isCorrect, restricción única (attempt, question). `@ManyToOne` hacia Attempt, Question y Option (opción marcada, opcional).
 
-**Optimización:** las relaciones `@ManyToOne` usan `FetchType.LAZY`; `cascade = ALL` con `orphanRemoval` solo en composición (Assessment → Question → Option, Attempt → Answer, Document → DocumentChunk). Los intentos no se borran en cascada, para conservar el historial.
+Todas heredan de `BaseEntity` (id, createdAt, updatedAt con auditoría JPA).
+
+**Optimización:** las relaciones `@ManyToOne` usan `FetchType.LAZY` y la mayoría son unidireccionales; solo hay `@OneToMany` donde existe composición real (Assessment → Question → Option/QuestionSource, Attempt → Answer), con `cascade = ALL` y `orphanRemoval`. Las colecciones usan `@BatchSize` y las consultas críticas `@EntityGraph` para evitar N+1. Los intentos no se borran en cascada, para conservar el historial.
 
 ## Manejo de Errores
 
 ### Estrategia de Excepciones Globales
 
-Un `@RestControllerAdvice` centraliza el manejo de errores y responde siempre con `ErrorResponseDTO`:
+Un `@RestControllerAdvice` centraliza el manejo de errores y responde siempre con `ErrorResponse`:
 
 - `timestamp`: fecha y hora en formato ISO-8601.
 - `status`: código HTTP.
 - `error`: nombre estándar del estado HTTP.
 - `message`: motivo del fallo.
 - `path`: URI invocada.
+- `fieldErrors`: errores de validación por campo (solo en respuestas 400).
 
 Manejarlas globalmente evita exponer trazas internas y garantiza un formato y código HTTP uniformes.
 
@@ -175,9 +178,9 @@ También se manejan excepciones de Spring: `MethodArgumentNotValidException` (40
 
 Tres roles almacenados en base de datos e incluidos en el JWT:
 
-- **STUDENT:** sube su material, genera, edita y resuelve sus propias evaluaciones.
-- **TEACHER:** además publica evaluaciones oficiales dentro de sus cursos.
-- **ADMIN:** gestiona universidades, carreras, cursos y usuarios.
+- **STUDENT:** se matricula en cursos, genera evaluaciones de práctica con los documentos existentes y las rinde.
+- **TEACHER:** además sube documentos PDF a los cursos, genera evaluaciones, edita sus preguntas y publica.
+- **ADMIN:** además gestiona universidades, carreras, cursos y los roles de los usuarios.
 
 Se aplica con `@EnableMethodSecurity` y `@PreAuthorize`. Además, los servicios verifican que el usuario autenticado sea dueño del recurso antes de editarlo o eliminarlo.
 
@@ -199,7 +202,7 @@ Las operaciones lentas se ejecutan fuera del hilo de la petición mediante event
 | `AssessmentGenerationRequestedEvent` | Recupera fragmentos relevantes y genera las preguntas con el LLM | La generación depende de un servicio externo lento |
 | `AssessmentGeneratedEvent` | Notifica por correo que la evaluación está lista | El envío SMTP no debe bloquear la generación |
 | `UserRegisteredEvent` | Envía el correo de bienvenida | El registro responde sin esperar al servidor de correo |
-| `AttemptCompletedEvent` | Envía el reporte de resultados con desempeño por tema | La calificación se entrega de inmediato; el correo se envía después |
+| `AttemptCompletedEvent` | Envía el correo con la nota obtenida | La calificación se entrega de inmediato; el correo se envía después |
 
 Los endpoints de subida y generación responden `202 Accepted`; el cliente consulta el `status` del recurso. Los correos usan plantillas Thymeleaf.
 
@@ -237,21 +240,35 @@ docker compose up -d          # PostgreSQL 16 + pgvector
 | `JWT_SECRET` | Clave de firma (generar con `openssl rand -base64 64`) |
 | `JWT_EXPIRATION_MS`, `JWT_REFRESH_EXPIRATION_MS` | Vigencia de los tokens |
 | `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD` | Servidor SMTP |
-| `OPENAI_API_KEY` | Clave del proveedor de IA |
+| `AI_API_KEY`, `AI_BASE_URL`, `AI_CHAT_MODEL`, `AI_EMBEDDING_MODEL` | Credenciales y configuración del proveedor de IA (Gemini) |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Credenciales del primer administrador |
+| `UPLOAD_DIR` | Carpeta local para almacenar PDFs temporalmente |
 | `CORS_ALLOWED_ORIGINS` | Orígenes permitidos del frontend |
 
 ### Endpoints principales (`/api/v1`)
 
 | Módulo | Rutas |
 |---|---|
-| Auth | `POST /auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout` |
-| Académico | `/universities`, `/careers`, `/courses`, `/courses/{id}/enrollments` |
-| Documentos | `POST /courses/{id}/documents`, `GET /documents/{id}` |
-| Evaluaciones | `POST /assessments/generate`, `/assessments/{id}`, `/assessments/{id}/publish` |
-| Preguntas | `PUT /questions/{id}`, `POST /questions/{id}/regenerate`, `GET /questions/{id}/sources` |
-| Intentos | `POST /assessments/{id}/attempts`, `POST /attempts/{id}/submit`, `GET /attempts/{id}/result` |
+| Auth | `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout` |
+| Usuarios | `GET /users/me`, `GET /users`, `PATCH /users/{id}/role` |
+| Académico | CRUD completo de `universities`, `careers` y `courses` (escritura solo ADMIN), `POST /courses/{id}/enrollments` |
+| Documentos | `GET /courses/{courseId}/documents`, `POST /courses/{courseId}/documents`, `GET /courses/{courseId}/documents/{id}` |
+| Evaluaciones | `GET /assessments/me`, `GET /courses/{courseId}/assessments`, `POST /assessments/generate`, `GET /assessments/{id}`, `PUT /assessments/{id}`, `DELETE /assessments/{id}`, `POST /assessments/{id}/publish` |
+| Preguntas | `PUT /assessments/{id}/questions/{questionId}`, `DELETE /assessments/{id}/questions/{questionId}`, `GET /assessments/{id}/questions/{questionId}/sources` |
+| Intentos | `GET /attempts/me`, `POST /assessments/{id}/attempts`, `POST /attempts/{id}/submit`, `GET /attempts/{id}` |
 
 El detalle completo con ejemplos está en Swagger y en la colección Postman.
+
+### Cómo probar (Flujo completo)
+
+1. **Login como Admin:** `POST /auth/login` para obtener el token.
+2. **Crear Curso:** `POST /courses` para crear un espacio de trabajo.
+3. **Subir PDF:** `POST /courses/{courseId}/documents` para cargar el material de estudio.
+4. **Esperar READY:** Consultar `GET /courses/{courseId}/documents/{id}` hasta que el estado del documento sea `READY`.
+5. **Generar Evaluación:** `POST /assessments/generate` seleccionando el PDF subido.
+   - 5b. **Hacerla visible:** `PUT /assessments/{id}` cambiando la visibilidad a `PUBLIC` (o `COURSE`, en cuyo caso el estudiante debe matricularse antes con `POST /courses/{courseId}/enrollments`).
+6. **Publicar:** `POST /assessments/{id}/publish` para confirmar la publicación.
+7. **Rendir y Calificar:** Un estudiante inicia (`POST /assessments/{id}/attempts`), envía sus respuestas (`POST /attempts/{id}/submit`) y obtiene su nota (`GET /attempts/{id}`).
 
 ## Conclusión
 
