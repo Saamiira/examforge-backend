@@ -15,4 +15,6 @@ public interface AttemptRepository extends JpaRepository<Attempt, Long> {
 
     @EntityGraph(attributePaths = {"assessment", "student", "answers"})
     Optional<Attempt> findWithAssessmentById(Long id);
+
+    boolean existsByAssessmentId(Long assessmentId);
 }
