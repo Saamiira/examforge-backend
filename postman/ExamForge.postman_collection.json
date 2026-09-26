@@ -364,8 +364,17 @@
           "request": {
             "method": "PUT",
             "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Práctica de normalización\",\n  \"description\": \"Generada con RAG\",\n  \"difficulty\": \"MEDIUM\",\n  \"visibility\": \"PUBLIC\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/assessments/1/public",
+              "raw": "{{baseUrl}}/api/v1/assessments/1",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -373,8 +382,7 @@
                 "api",
                 "v1",
                 "assessments",
-                "1",
-                "public"
+                "1"
               ]
             }
           },
@@ -430,7 +438,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/assessments/my",
+              "raw": "{{baseUrl}}/api/v1/assessments/me",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -438,7 +446,7 @@
                 "api",
                 "v1",
                 "assessments",
-                "my"
+                "me"
               ]
             }
           },
@@ -510,15 +518,6 @@
                 "value": ""
               }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"assessmentId\": 1\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
             "url": {
               "raw": "{{baseUrl}}/api/v1/assessments/1/attempts",
               "host": [
@@ -569,43 +568,78 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "Enviar intento ya finalizado (Error 409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "",
+                "value": ""
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answers\": [\n    {\n      \"questionId\": 1,\n      \"selectedOptionId\": 1\n    },\n    {\n      \"questionId\": 2,\n      \"selectedOptionId\": 5\n    },\n    {\n      \"questionId\": 3,\n      \"selectedOptionId\": 7\n    },\n    {\n      \"questionId\": 4,\n      \"selectedOptionId\": 11\n    },\n    {\n      \"questionId\": 5,\n      \"selectedOptionId\": 15\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/attempts/2/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "attempts",
+                "2",
+                "submit"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Enviar respuestas",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "",
+                "value": ""
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answers\": [\n    {\n      \"questionId\": 1,\n      \"selectedOptionId\": 1\n    },\n    {\n      \"questionId\": 2,\n      \"selectedOptionId\": 5\n    },\n    {\n      \"questionId\": 3,\n      \"selectedOptionId\": 7\n    },\n    {\n      \"questionId\": 4,\n      \"selectedOptionId\": 11\n    },\n    {\n      \"questionId\": 5,\n      \"selectedOptionId\": 15\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/attempts/2/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "attempts",
+                "2",
+                "submit"
+              ]
+            }
+          },
+          "response": []
         }
       ]
-    },
-    {
-      "name": "Enviar intento ya finalizado (Error 409)",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "",
-            "value": ""
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"answers\": [\n    {\n      \"questionId\": 1,\n      \"selectedOptionId\": 1\n    },\n    {\n      \"questionId\": 2,\n      \"selectedOptionId\": 5\n    },\n    {\n      \"questionId\": 3,\n      \"selectedOptionId\": 7\n    },\n    {\n      \"questionId\": 4,\n      \"selectedOptionId\": 11\n    },\n    {\n      \"questionId\": 5,\n      \"selectedOptionId\": 15\n    }\n  ]\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/attempts/2/submit",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "attempts",
-            "2",
-            "submit"
-          ]
-        }
-      },
-      "response": []
     }
   ],
   "auth": {
