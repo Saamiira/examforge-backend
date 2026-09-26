@@ -9,7 +9,7 @@
   - Lucia Rodriguez — Código: 202310459
   - Samira Rincon — Código: 202220436
   - Valeria Briceño — Código: 202310513
-- **Enlace de Despliegue en Producción:** [AQUÍ VA LA URL DE AWS] *(Nota: Desplegado usando AWS Academy Learner Lab)*
+- **Enlace de Despliegue en Producción:** Enlace de Despliegue en Producción: http://44.210.220.247:8080 (Nota: Desplegado usando AWS Academy Learner Lab)
 - **Colección Postman:** [`ExamForge.postman_collection.json`](./postman/ExamForge.postman_collection.json)
 
 ## Índice
